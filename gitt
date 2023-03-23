@@ -1,0 +1,12 @@
+###########################
+##########################
+#script automates the git push process
+
+git add --all
+
+echo -e "Please Enter commit message:: "
+read -e message
+
+git commit -m "($message)"
+
+git push
