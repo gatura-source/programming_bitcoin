@@ -28,18 +28,12 @@ def hash160(s):
 
 
 ###EXercise 7
-def lit_to_int(little):
+def lit_to_int(little, length):
     """
     Takes Python bytes, interprets as little-endian
     and returns the number (assumes hex)
     in Little-Endian, THe LSB is stored first
     """
-    length = len(little) - 1
-    byte_array = []
-    while length >= 0:
-        byte_array.append(little[length])
-        length -= 1
-
-    return byte_array
+    return little.to_bytes(length, 'little')
 
 
