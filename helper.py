@@ -28,12 +28,59 @@ def hash160(s):
 
 
 ###EXercise 7
-def lit_to_int(little, length):
+def little_endian_to_int(i):
     """
     Takes Python bytes, interprets as little-endian
     and returns the number (assumes hex)
     in Little-Endian, THe LSB is stored first
     """
-    return little.to_bytes(length, 'little')
+    return int.from_bytes(i, 'little')
 
+def int_to_little_endian(integer, byte_len):
+    """
+    Takes Python integers, and 
+    returns little-endian bytes of lenght
+    byte_len
+    """
+    return integer.to_bytes(byte_len, 'little')
+def read_varint(s):
+    """
+    This function reads varints
+    """
+    i = s.read(1)[0]
+    #case 1
+    if i == 0xfd:
+        ##0xfd means the next 2 bytes are the number
+        return little_endian_to_int(s.read(2))
+    elif i == 0xfe:
+        ##0xfe means that the next four bytes are the number
+        return little_endian_to_int(s.read(4))
+    elif i == 0xff:
+        #0xff means that the next 8 bytes are the number
+        return little_endian_to_int(s.read(8))
+    else:
+        ##no encoding done on the original number
+        return i
+
+def encode_varint(i):
+    """The function encodes integers to varints"""
+
+    """Number less than 253"""
+    if i < 0xfd:
+        return bytes([i])
+    elif i < 0x10000:
+        """
+        Number btwn 253 and (2^16) - 1
+        """
+        return b'\xfd' + int_to_little_endian(i, 2)
+    elif i < 0x100000000:
+        """
+        Number btwn 2^16 and (2^32)-1
+        """
+        return b'\xfe' + int_to_little_endian(i, 4)
+    elif i < 0x10000000000000000:
+        """
+        Number btwn (2^32) and (2^64) - 1
+        """
+        return b'\xff' + int_to_little_endian(i, 8)
 
