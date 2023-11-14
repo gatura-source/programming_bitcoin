@@ -6,6 +6,7 @@ from helper import little_endian_to_int, int_to_little_endian #conversoin
 from helper import encode_varint, read_varint #as named
 import requests #http requests to shared nodes
 import os #env variables
+from script import Script
 class Tx:
     """
     Module represents bitcoin transactions
@@ -27,7 +28,8 @@ class Tx:
 
     def __repr__(self):
         tx_ins = ''
-        for tx_ins in self.tx_ins:
+        tx_outs = ''
+        for tx_in in self.tx_ins:
             tx_ins += tx_in.__repr__() + '\n'
         for tx_out in self.tx_outs:
             tx_outs += tx_out.__repr__() + '\n'
@@ -54,7 +56,7 @@ class Tx:
         result += encode_varint(len(self.tx_ins))
         for tx_in in self.tx_ins:
             result += tx_in.serialize()
-        result += encode_varint(len(self_tx_outs))
+        result += encode_varint(len(self.tx_outs))
         for tx_out in self.tx_outs:
             result += tx_out.serialize()
         result += int_to_little_endian(self.locktime, 4)
@@ -160,13 +162,23 @@ class TxOut:
     amount - Amount in Satoshis
     script_pubkey = script_pubkey
     """
-    def __init__(self, amout, script_pubkey):
+    def __init__(self, amount, script_pubkey):
         self.amount = amount
         self.script_pubkey = script_pubkey
 
     def __repr__(self):
         return f"{self.amount}:{self.script_pubkey}"
 
+    def serialize(self):
+        """
+        Returns byte serialization of transaction 
+        output
+        """
+        result = int_to_little_endian(self.amount, 8)
+        #bitcoin divisibility
+        result += self.script_pubkey.serialize()
+        #serializing the script_pubkey
+        return result
     @classmethod
     def parse(cls, s):
         """
@@ -210,7 +222,7 @@ class TxFetcher:
                 raise ValueError(f"Unexpected Response: {response.text}")
             if raw[4] == 0:
                 raw = raw[:4] + raw[6:]
-                tx = TX.parse(BytesIO(raw), testnet=testnet)
+                tx = Tx.parse(BytesIO(raw), testnet=testnet)
                 tx.locktime = little_endian_to_int(raw[-4:])
             else:
                 tx = Tx.parse(BytesIO(raw), testnet=testnet)
