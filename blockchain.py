@@ -183,7 +183,7 @@ N = 0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141 #order of
 
 #object below stores the signatura (r) and s
 class Signature():
-    def __init__(self, s, r):
+    def __init__(self, r, s):
         self.r = r
         self.s = s
     def __repr__(self):
@@ -207,6 +207,17 @@ class Signature():
             sbin = b'\x00' + sbin
         result += bytes([2, len(sbin)]) + sbin
         return bytes([0x30, len(result)]) + result
+
+    @classmethod
+    def parse(cls, sig):
+        """
+        Parsing a DER signature
+        """
+        if sig[0] == 48:
+            r_int = int.from_bytes(sig[4:36], 'big')
+            s_int = int.from_bytes(sig[39:71], 'big')
+        return Signature(r_int, s_int)
+
 
 
 class S256Field(FiniteElement):#creating a field of secp256ki
@@ -241,11 +252,15 @@ class S256Point(Point):#defining the point for the field above
         return 'S256Point {}, {}'.format(self.x, self.y)
 
     def verify(self, Signature, z):#functioning to verify a privatekey
+        """Verifies a signature by comparing its r to
+        x cordinate of generated point
+        """
         s_inverse = pow(Signature.s, N-2, N) #fermat's theorem is used here
         u = z * s_inverse % N
         v = Signature.r * s_inverse % N
         a_point = (u*G + v*self) 
         return a_point.x.element == Signature.r
+
     def SEC(self, compressed = True):
         """
         returns compressed serialized point be default
@@ -273,9 +288,9 @@ class S256Point(Point):#defining the point for the field above
             #not compressed
             x = int.from_bytes(sec_bin[1:33], 'big') #first 32 bytes after the marker
             y = int.from_bytes(sec_bin[33:65], 'big') #next 32 bytes after the first 32 bytes from the marker
-            
-            ##compressed case
-            #case 1 (marker is 2)
+            return S256Point(x=x, y=y)
+        ##compressed case
+        #case 1 (marker is 2)
         is_even = (sec_bin[0] == 2)
         x = S256Field(int.from_bytes(sec_bin[1:], 'big')) #remember we only get x
             ##we can use the equation to derive y
@@ -317,12 +332,16 @@ class PrivateKey():
     def hex(self):
         return '{:x}'.format(self.secret).zfill(64)
     def sign(self, z):
+        """
+        Signs a message using the 
+        secret provided
+        """
         k = self.deterministic(z)
         r = (k*G).x.element #x cordinate of our target
         k_inv = pow(k, N-2, N)
-        s = (self.secret*r + z) * k_inv % N #from fermat's little theorem
+        s = (z + r*self.secret) * k_inv % N #from fermat's little theorem
         if s > N/2:
-            s = N-2
+            s = N-s
         return Signature(r, s)
 
     def wif(self, compressed=True, testnet=False):
@@ -340,6 +359,10 @@ class PrivateKey():
             suffix = b''
         return encode_base58_checksum(prefix + secret_bytes + suffix)
     def deterministic(self, z): #aim at producing a random unique k for each signing
+        """
+        Function Ensures that for each hash, 
+        a random and unique K is produced
+        """
         k = b'\x00' *32
         v = b'\x00' *32
         if z > N:
@@ -353,7 +376,7 @@ class PrivateKey():
         v = hmac.new(k, v, s256).digest()
         while  True:
             v = hmac.new(k, v, s256).digest()
-            candidate = v.from_bytes(v, 'big')
+            candidate = int.from_bytes(v, 'big')
             if candidate >= 1 and candidate < N:
                 return candidate
             k = hmac.new(k, v + b'\x01', s256).digest()

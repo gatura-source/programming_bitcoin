@@ -10,6 +10,15 @@ from helper import encode_varint, read_varint, little_endian_to_int, int_to_litt
 
 from op import OP_CODE_FUNCTIONS, OP_CODE_NAMES
 
+import logging
+
+"""
+Configuring the logger
+"""
+Format = '%(asctime)s %(message)s'
+logging.basicConfig(format=Format)
+LOGGER = logging.getLogger()
+
 class Script:
     def __init__(self, cmds=None):
         if cmds is None:
