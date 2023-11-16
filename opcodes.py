@@ -69,6 +69,9 @@ def op_hash160(stack):
     stack.append(hash160(element))
     return True
 
+def op_checksig(stack):
+    """
+    Consumes the top most element 
 #code for op_dup is 0x76(118)
 #code for op_hash256 is 0xaa(170)
 #code for op_hash160 is 0xa9(169)
