@@ -7,6 +7,7 @@ from helper import encode_varint, read_varint #as named
 import requests #http requests to shared nodes
 import os #env variables
 from script import Script
+from io import BytesIO
 class Tx:
     """
     Module represents bitcoin transactions
@@ -69,7 +70,6 @@ class Tx:
         inputs = []
         for _ in range(num_inputs):
             inputs.append(TxIn.parse(stream))
-
         num_outputs = read_varint(stream)
         outputs = []
         for _ in range(num_outputs):
@@ -88,6 +88,10 @@ class Tx:
         for _ in self.tx_outs:
             fee -= _.amount
         return fee
+    def sig_hash(self):
+        """
+        Gets signature from an input
+        """
 
 class TxIn:
     """
@@ -127,7 +131,7 @@ class TxIn:
         Takes a byte stream and parses tx_input at the start
         returns a tx_in object
         """
-        prev_tx = s.read(32)[::1]
+        prev_tx = s.read(32)[::-1]
         prev_index = little_endian_to_int(s.read(4))
         script_sig = Script.parse(s)
         sequence = little_endian_to_int(s.read(4))
@@ -204,9 +208,9 @@ class TxFetcher:
         and verify the ID
         """
         if testnet:
-            return f"https://go.getblock.io/{os.environ.get(TESTNET_ACCESS_TOKEN)}"
+            return f"https://go.getblock.io/{os.environ.get('TESTNET_ACCESS_TOKEN')}"
         else:
-            return f"https://go.getblock.io/{os.environ.get(MAINNET_ACCESS_TOKEN)}"
+            return f"https://go.getblock.io/{os.environ.get('MAINNET_ACCESS_TOKEN')}"
 
     @classmethod
     def fetch(cls, tx_id, testnet=False, fresh=False):
